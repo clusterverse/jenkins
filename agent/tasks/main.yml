@@ -25,6 +25,54 @@
         group: "{{jenkins_username}}"
         state: directory
 
+    - name: jenkins/agent | Get Jenkins CSRF crumb
+      ansible.builtin.uri:
+        url: "{{ jenkins_controller_url }}/crumbIssuer/api/json"
+        user: "{{ jenkins_admin_username }}"
+        password: "{{ jenkins_admin_password }}"
+        method: GET
+        force_basic_auth: true
+        return_content: yes
+        status_code: 200
+      register: r__uri__crumb_response
+
+    - name: jenkins/agent | Add Jenkins agent via REST API
+      ansible.builtin.uri:
+        url: "{{ jenkins_controller_url }}/computer/doCreateItem?name={{ inventory_hostname }}&Jenkins-Crumb={{ r__uri__crumb_response.json.crumb }}"
+        user: "{{ jenkins_admin_username }}"
+        password: "{{ jenkins_admin_password }}"
+        method: POST
+        force_basic_auth: true
+        headers:
+          Content-Type: "application/x-www-form-urlencoded"
+          Cookie: "{{ r__uri__crumb_response.cookies_string }}"
+        body_format: form-urlencoded
+        body:
+          type: "hudson.slaves.DumbSlave"
+          json: |
+            {
+              "name": "{{ inventory_hostname }}",
+              "nodeDescription": "",
+              "numExecutors": "{{ (ansible_processor_vcpus * jenkins_agent.numExecutorsMultiplier) | default(0) | round(0,'ceil')|int }}",
+              "remoteFS": "{{jenkins_home_dir}}",
+              "labelString": "agent",
+              "launcher": {
+                "stapler-class": "hudson.slaves.JNLPLauncher",
+                "$class": "hudson.slaves.JNLPLauncher",
+                "workDirSettings": {
+                  "disabled": false,
+                  "internalDir": "remoting",
+                  "failIfWorkDirIsMissing": false
+                }
+              },
+              "retentionStrategy": {
+                "stapler-class": "hudson.slaves.RetentionStrategy$Always",
+                "$class": "hudson.slaves.RetentionStrategy$Always"
+              }
+            }
+        status_code: 200, 302
+      register: r__uri__create_agent
+
     - name: jenkins/agent | Get secret
       uri:
         url: "{{ jenkins_controller_url }}/computer/{{ inventory_hostname }}/jenkins-agent.jnlp"
@@ -76,5 +124,6 @@
         enabled: true
         state: started
         daemon_reload: true
+
   vars:
     jenkins_controller_url: "http://{% if cluster_vars.dns_server is defined and cluster_vars.dns_server != '' and cluster_vars.dns_user_domain is defined %}{{ groups['controller'][0] }}.{{ cluster_vars.dns_user_domain | regex_replace('\\.*$') }}{% else %}{{ hostvars[groups['controller'][0]]['ansible_host'] }}{% endif %}:80"

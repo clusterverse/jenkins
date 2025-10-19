@@ -3,14 +3,14 @@
 job:
   name: 'jenkins/jenkins-release-tag'
   project-type: pipeline
-  workspace: "{{ jenkins_controller.workspace_dir }}/jenkins-release-tag"
+  workspace: "{{ jenkins_controller.jobs_dir }}/jenkins-release-tag"
   build-discarder:
     days-to-keep: 5
     num-to-keep: 10
   pipeline-scm:
     scm:
       - git:
-          url: https://github.com/dseeley/jenkins-ansible.git
+          url: https://github.com/clusterverse/jenkins.git
           branches: [ "master" ]
           credentials-id: GITHUB_SVC_USER
           timeout: 5

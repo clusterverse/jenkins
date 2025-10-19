@@ -1,7 +1,7 @@
 #!groovy
 import groovy.json.JsonOutput
 
-def PROJECT_URL_DEFAULT = "https://github.com/dseeley/jenkins-ansible"
+def PROJECT_URL_DEFAULT = "https://github.com/clusterverse/jenkins"
 def PROJECT_BRANCH_DEFAULT = "master"       //Set the default git branch to use if we're not running an SCM job (e.g. if we're copying/pasting into a pipeline script)
 
 properties([

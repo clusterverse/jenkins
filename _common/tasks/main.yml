@@ -61,5 +61,16 @@
     limit_item: nproc
     value: 30654
 
+- name: jenkins/common | change ownership of mountpoints
+  become: true
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    owner: "{{ jenkins_username }}"
+    group: "{{ jenkins_username }}"
+  with_items:
+    - "{{ jenkins_controller.jobs_dir }}"
+
 - name: jenkins/common | install Docker build images
   include_tasks: docker-build-images.yml

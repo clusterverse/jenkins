@@ -30,26 +30,29 @@ jenkins_ui:
 
 jenkins_agent:
   bindir: "/opt/jenkins"
-  numExecutorsMultiplier: 0.75            # Cannot set to "{{ansible_processor_vcpus * 2}}" because ansible_processor_vcpus is a hostvar, only determined when being built.
+  numExecutorsMultiplier: 1            # Cannot set to "{{ansible_processor_vcpus * 2}}" because ansible_processor_vcpus is a hostvar, only determined when being built.
 
 jenkins_controller:
   docker_image:
     repo: "https://github.com/jenkinsci/docker.git"
-    repo_version: "HEAD"                                            # Or a git hash, e.g. "8a9f09e5f5ccfe2f2c2b13a9f0fe602f9500fa7c"
-    repo_dockerfile_path: "/debian/bookworm/hotspot/Dockerfile"     # From: https://github.com/jenkinsci/docker.git
+    repo_version: "HEAD"                                            # Or a git hash, e.g. "6902b0181c87114e33f7d3fa2afeade8c3bc4aa3"
+    repo_dockerfile_path: "/debian/trixie/hotspot/Dockerfile"       # From: https://github.com/jenkinsci/docker.git
     war_version: "latest-lts"                                       # One of: 'latest-lts', 'latest', or a legitimate version string (from https://repo.jenkins-ci.org/releases/org/jenkins-ci/main/jenkins-war/maven-metadata.xml)
     plugin_cli_version: "latest"                                    # One of: 'latest', or 'tags/<tag>' (e.g. 'tags/2.9.3')
-  workspace_dir: "{{jenkins_home_dir}}/jobs"
+  jobs_dir: "{{jenkins_home_dir}}/jobs"
   plugins:
     - "basic-branch-build-strategies:latest"
     - "blueocean:latest"
     - "configuration-as-code:latest"
     - "docker-workflow:latest"
     - "git-parameter:latest"
+    - "inline-pipeline:latest"
     - "lockable-resources:latest"
     - "login-theme:latest"
     - "parameterized-scheduler:latest"
     - "permissive-script-security:latest"
+    - "pipeline-github-lib:latest"
+    - "pipeline-multibranch-defaults:latest"
     - "pipeline-stage-view:latest"
     - "pipeline-utility-steps:latest"
     - "rebuild:latest"
@@ -113,3 +116,10 @@ jenkins_controller:
                   scope: GLOBAL
                   id: VAULT_PASSWORD_SANDBOX
                   secret: "FAKEPASSWD"
+              - basicSSHUserPrivateKey:
+                  scope: GLOBAL
+                  id: SANDBOX_SSH_KEY
+                  username: ubuntu
+                  privateKeySource:
+                    directEntry:
+                      privateKey: "FAKEPASSWD"

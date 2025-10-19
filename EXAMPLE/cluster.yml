@@ -4,39 +4,38 @@
   hosts: localhost
   gather_facts: false
   tasks:
-    - { name: "Get dependent roles via ansible-galaxy", local_action: "command ansible-galaxy role install --ignore-errors -fr requirements.yml", tags: ["always"] }
+    - name: clusterverse | collection dependency check
+      assert: { that: "['clusterverse.clusterverse'] is subset(galaxy_collections.keys())", fail_msg: "Please ensure the required collections are installed: ansible-galaxy collection install -U -r requirements.yml)" }
+      vars: { galaxy_collections: "{{lookup('pipe', 'ansible-galaxy collection list --format=json', errors='ignore') | from_json | json_query('*') | combine }}" }
 
-    - { include_role: { name: "clusterverse/clean", apply: { tags: ["clusterverse_clean"]} }, tags: ["clusterverse_clean"], when: "clean is defined" }
-    - { include_role: { name: "clusterverse/create", apply: { tags: ["clusterverse_create"]} }, tags: ["clusterverse_create"] }
-    - { include_role: { name: "clusterverse/dynamic_inventory", apply: { tags: ["always"]} }, tags: ["always"] }
+    - { include_role: { name: "clusterverse.clusterverse.clean", apply: { tags: ["clusterverse_clean"]} }, tags: ["clusterverse_clean"], when: "clean is defined" }
+    - { include_role: { name: "clusterverse.clusterverse.create", apply: { tags: ["clusterverse_create"]} }, tags: ["clusterverse_create"] }
+    - { include_role: { name: "clusterverse.clusterverse.dynamic_inventory", apply: { tags: ["always"]} }, tags: ["always"] }
     - { name: "clusterverse | Copy ansible_ssh_private_key_file", local_action: "copy content={{cluster_vars[buildenv].ssh_connection_cfg.host.ansible_ssh_private_key_file}} dest='id_rsa_ansible_ssh_private_key_file' mode='0600'", when: "cluster_vars[buildenv].ssh_connection_cfg.host.ansible_ssh_private_key_file is defined", no_log: true, tags: ["always"] }
     - { name: "clusterverse | Copy bastion sshkey", local_action: "copy content={{cluster_vars[buildenv].ssh_connection_cfg.bastion.ssh_priv_key}} dest='id_rsa_bastion' mode='0600'", when: "cluster_vars[buildenv].ssh_connection_cfg.bastion.ssh_priv_key is defined", no_log: true, tags: ["always"] }
-
-- name: clusterverse | Wait for SSH connections
-  hosts: all
-  gather_facts: false
-  tasks: [ {wait_for_connection: "", tags: ["always"] } ]
 
 - name: clusterverse | Configure the cluster
   hosts: all:!not_target_hosts
   gather_facts: false
-  tasks: [ { include_role: { name: "clusterverse/config", apply: { tags: ["clusterverse_config"]} }, tags: ["clusterverse_config"] } ]
+  tasks:
+    - { wait_for_connection: "", timeout: 300, tags: ["always"] }
+    - { include_role: { name: "clusterverse.clusterverse.config", apply: { tags: ["clusterverse_config"]} }, tags: ["clusterverse_config"] }
 
 
 ###### Application roles
 - name: Jenkins common tasks
-  hosts: all
+  hosts: all:!not_target_hosts
   tasks:
-    - { include_role: { name: "clusterverse/_dependencies", apply: {tags: ["always"]} }, tags: ["always"] }             #If we --skip-tags=clusterverse_config, this will ensure the variables from /cluster_defs are loaded.
+    - { include_role: { name: "clusterverse.clusterverse._dependencies", apply: { tags: ["always"] } }, tags: ["always"], when: "'clusterverse_config' not in ansible_run_tags" }      # If we --skip-tags=clusterverse_config, this will ensure the variables from /cluster_defs are loaded.
     - { include_role: { name: "jenkins/_common", apply: {tags: ["jenkins_common"]} }, tags: ["jenkins_common"] }
 
 - name: Jenkins controller tasks
-  hosts: controller
+  hosts: controller:!not_target_hosts
   tasks:
     - { include_role: { name: "jenkins/controller", apply: {tags: ["jenkins_controller"]} }, tags: ["jenkins_controller"] }
 
 - name: Jenkins agent tasks
-  hosts: agent
+  hosts: agent:!not_target_hosts
   tasks:
     - { include_role: { name: "jenkins/agent", apply: {tags: ["jenkins_agent"]} }, tags: ["jenkins_agent"] }
 ######
@@ -44,4 +43,4 @@
 
 - name: clusterverse | Perform cluster readiness operations
   hosts: localhost
-  tasks: [ { include_role: { name: "clusterverse/readiness", apply: { tags: ["clusterverse_readiness"]} }, tags: ["clusterverse_readiness"] } ]
+  tasks: [ { include_role: { name: "clusterverse.clusterverse.readiness", apply: { tags: ["clusterverse_readiness"]} }, tags: ["clusterverse_readiness"] } ]

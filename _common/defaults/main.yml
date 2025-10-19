@@ -8,11 +8,11 @@ host_docker:
   group: *hostdockeruser
   data_root_dir: "/var/lib/docker"
   network:
-    docker0_default_address_pools: []     # Optional.  If commented-out, the default local pools are used ([{"base":"172.17.0.0/12","size":16},{"base":"192.168.0.0/16","size":20}]}).  If set to a valid list<dict> (e.g. in case of clash with host network), that is used instead.  If set to an empty list, the the docker0 bridge is disabled, which means --network must be passed when creating containers.  (This is a hassle, but preferred, as default bridge is considered legacy: https://docs.docker.com/network/bridge/#use-the-default-bridge-network)
+#    docker0_default_address_pools: []     # Optional.  If commented-out, the default local pools are used ([{"base":"172.17.0.0/12","size":16},{"base":"192.168.0.0/16","size":20}]}).  If set to a valid list<dict> (e.g. in case of clash with host network), that is used instead.  If set to an empty list, the the docker0 bridge is disabled, which means --network must be passed when creating containers.  (This is a hassle, but preferred, as default bridge is considered legacy: https://docs.docker.com/network/bridge/#use-the-default-bridge-network)
     container:                            # Settings for the container network
-      mode: bridge                        # Configure either 'host' or 'bridge' networking.  If set to host, we disable Docker's iptables se we can redirect 80:8080 and 443:8443
-      name: "jenkins"                     # Optional, only valid if mode='bridge' (above).   If omitted, docker uses the 'docker0' bridge
-#      cidr: "192.168.254.1/24"            # Optional, only valid if mode='bridge' (above).   If omitted, docker selects a cidr from a default pool).  If this is set, 'name' must also be set.
+      mode: bridge                        # Configure either 'host' or 'bridge' networking.  If set to 'host', we disable Docker's iptables se we can redirect 80:8080 and 443:8443
+      name: "jenkins"                     # Optional, only valid if mode='bridge' (above).  If omitted, docker uses the 'docker0' bridge
+#      cidr: "192.168.254.1/24"            # Optional, only valid if mode='bridge' (above).  If omitted, docker selects a cidr from a default pool).  If this is set, 'name' must also be set.
 
 #    docker0_default_address_pools: [{"base":"192.168.100.1/24","size":26}]     # Optional.   If commented-out, the default local pools are used ([{"base":"172.17.0.0/12","size":16},{"base":"192.168.0.0/16","size":20}]}).  If set to a valid list<dict> (e.g. in case of clash with host network), that is used instead.  If set to an empty list, the the docker0 bridge is disabled, which means --network must be passed when creating containers.  (This is a hassle, but preferred, as default bridge is considered legacy: https://docs.docker.com/network/bridge/#use-the-default-bridge-network)
 #    container:                            # Settings for the container network
@@ -31,7 +31,7 @@ jenkins_gid: "{{jenkins_uid}}"
 
 jenkins_ui:
   email: "example@example.com"
-  skin_color: "linear-gradient(110deg, transparent 40%, #000 40%), linear-gradient(90deg, #0085ff 0%, #044689 40%)"
+  skin_color: "linear-gradient(110deg, transparent 40%, #888 40%), linear-gradient(90deg, #0085ff 0%, #044689 40%)"
   content: "{{clusterid | default('jenkins')}} | {{cloud_type | default()}} | {{region | default()}} | {{buildenv | default()}}"
 
 jenkins_agent:
@@ -42,10 +42,10 @@ jenkins_controller:
   docker_image:
     repo: "https://github.com/jenkinsci/docker.git"
     repo_version: "HEAD"                                            # Or a git hash, e.g. "8a9f09e5f5ccfe2f2c2b13a9f0fe602f9500fa7c"
-    repo_dockerfile_path: "/debian/bookworm/hotspot/Dockerfile"     # From: https://github.com/jenkinsci/docker.git
+    repo_dockerfile_path: "/debian/trixie/hotspot/Dockerfile"       # From: https://github.com/jenkinsci/docker.git
     war_version: "latest-lts"                                       # One of: 'latest-lts', 'latest', or a legitimate version string (from https://repo.jenkins-ci.org/releases/org/jenkins-ci/main/jenkins-war/maven-metadata.xml)
     plugin_cli_version: "latest"                                    # One of: 'latest', or 'tags/<tag>' (e.g. 'tags/2.9.3')
-  workspace_dir: "{{jenkins_home_dir}}/jobs"
+  jobs_dir: "{{jenkins_home_dir}}/jobs"
   plugins:
     - "basic-branch-build-strategies:latest"
     - "blueocean:latest"
@@ -58,6 +58,7 @@ jenkins_controller:
     - "parameterized-scheduler:latest"
     - "permissive-script-security:latest"
     - "pipeline-github-lib:latest"
+    - "pipeline-multibranch-defaults:latest"
     - "pipeline-stage-view:latest"
     - "pipeline-utility-steps:latest"
     - "rebuild:latest"
@@ -104,7 +105,7 @@ jenkins_controller:
     unclassified:
       location:
         adminAddress: "{{ jenkins_ui.email | default(omit) }}"
-      githubpluginconfig:
+      gitHubConfiguration:
         apiRateLimitChecker: ThrottleOnOver   #ThrottleForNormalize, ThrottleOnOver, NoThrottle
       globalDefaultFlowDurabilityLevel:
         durabilityHint: PERFORMANCE_OPTIMIZED

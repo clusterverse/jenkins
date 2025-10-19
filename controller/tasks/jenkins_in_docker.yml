@@ -48,22 +48,19 @@
     - name: jenkins Docker | create JCasC config file
       become: true
       copy:
-        content: "{{ _casc_config_plus_numExecutors_plus_resourceRoot_url_plus_agentnodes | to_nice_json }}"       # Note: we cannot use {{ jenkins_controller.casc_config | string | from_yaml | to_nice_yaml(indent=2, width=10000) }} because the string filter templates the multi-line vaulted ssh keys as double-escaped newlines (hence the re-templating, as vars, below)
+        content: "{{ _casc_config_plus_numExecutors_plus_resourceRoot_url | to_nice_json }}"       # Note: we cannot use {{ jenkins_controller.casc_config | string | from_yaml | to_nice_yaml(indent=2, width=10000) }} because the string filter templates the multi-line vaulted ssh keys as double-escaped newlines (hence the re-templating, as vars, below)
         dest: "{{jenkins_controller.casc_file.local}}"
         force: true    # remote file will be replaced when contents are different to the existing
         decrypt: true
         owner: "{{ jenkins_uid }}"
         group: "{{ jenkins_gid }}"
+      register: r__copy_jcasc
       vars:
         _base_casc_config: "{{jenkins_controller.casc_config}}"     # Note: We need to pre-template {{jenkins_controller.casc_config}} so that the vault credentials are templated-out correctly before filtering as json/yaml.
         __num_executors_controller: "{{ (ansible_processor_vcpus * jenkins_controller.jcasc_numExecutorsMultiplier) | round(0,'ceil')|int }}"    # A rough calculator (good for ansible loads) == (Number of vCPUs) * scaling factor
         _casc_config_plus_numExecutors: "{{_base_casc_config | combine({'jenkins': {'numExecutors': __num_executors_controller }}, recursive=true)}}"
         __location_url: "http://{%- if cluster_vars.dns_server is defined and cluster_vars.dns_server != '' -%} {{ansible_hostname | regex_replace('-(?!.*-).*')}}.{{cluster_vars.dns_user_domain | regex_replace('^(.*?)\\.?$','\\1')}} {%- else -%} {{ansible_default_ipv4.address}} {%- endif -%}"
         _casc_config_plus_numExecutors_plus_resourceRoot_url: "{{_casc_config_plus_numExecutors | combine({'unclassified': {'location': {'url': __location_url}}}, recursive=true)}}"
-        __num_executors_agent: "{{ 0 if 'agent' not in groups  else  (hostvars[groups['agent'][0]]['ansible_processor_vcpus'] * jenkins_agent.numExecutorsMultiplier) | default(0) | round(0,'ceil')|int }}"    # A rough calculator (good for ansible loads) == (Number of vCPUs) * scaling factor
-        __agentnodes: "{{ [] if 'agent' not in groups  else  groups['agent'] | json_query(\"[].{permanent: {labelString: `agent`, name: @, numExecutors: `\" + __num_executors_agent|string + \"`, remoteFS: `/home/jenkins`, launcher: {inbound: {workDirSettings: {disabled: `false`, failIfWorkDirIsMissing: `true`, internalDir: `remoting`}}}}}\") }}"
-        _casc_config_plus_numExecutors_plus_resourceRoot_url_plus_agentnodes: "{{_casc_config_plus_numExecutors_plus_resourceRoot_url | combine({'jenkins': {'nodes': __agentnodes}}, recursive=true)}}"
-      register: r__copy_jcasc
 
     - name: jenkins Docker | augment the dockerfile
       become: true
@@ -75,7 +72,7 @@
           # Install the dependencies for the Docker CLI (so we can run Docker builds in the container)
           RUN apt-get update \
           && apt-get install -y git vim sudo procps python3-pip \
-          && apt-get install -y --no-install-recommends apt-transport-https ca-certificates curl gnupg-agent software-properties-common \
+          && apt-get install -y --no-install-recommends apt-transport-https ca-certificates curl gnupg-agent \
           && install -m 0755 -d /etc/apt/keyrings \
           && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
           && chmod a+r /etc/apt/keyrings/docker.asc \
@@ -93,10 +90,8 @@
 
           USER ${user}
 
-          # Options for jenkins-plugin-cli: https://github.com/jenkinsci/plugin-installation-manager-tool.    # NOTE: This used to have problems (not tested recently) downloading plugins when built in GCP for some reason (gives "Unable to resolve plugin URL...").
+          # Options for jenkins-plugin-cli: https://github.com/jenkinsci/plugin-installation-manager-tool.
           RUN /bin/jenkins-plugin-cli --verbose --plugins {{ jenkins_controller.plugins | join(' ') }}
-          ## This is the legacy plugin installer. This was removed in 9b54caaf578b872fe3a89c3d83a69e2b7893ca5a - 26/06/2022
-          ## RUN /usr/local/bin/install-plugins.sh {{ jenkins_controller.plugins | join(' ') }}
       vars:
         host_docker_gid: "{{getent_group['docker'][1]}}"
 
@@ -144,10 +139,9 @@
             uid: "{{ jenkins_uid }}"
             gid: "{{ jenkins_gid }}"
             TARGETARCH: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else ansible_architecture }}"
-            JENKINS_VERSION: "{{ jenkins_war_version }}"
             JENKINS_HOME: "{{jenkins_home_dir}}"
             RELEASE_LINE: "{{ 'war-stable' if jenkins_controller.docker_image.war_version == 'latest-lts' else 'war' }}"
-            PLUGIN_CLI_URL: "{{ lookup('url', 'https://api.github.com/repos/jenkinsci/plugin-installation-manager-tool/releases/' + jenkins_controller.docker_image.plugin_cli_version) | from_json | json_query(\"assets[?ends_with(browser_download_url, '.jar')].browser_download_url | [0]\") }}"
+            WAR_URL: "https://repo.jenkins-ci.org/public/org/jenkins-ci/main/jenkins-war/{{ jenkins_war_version }}/jenkins-war-{{ jenkins_war_version }}.war"
           network: host
           pull: true
           nocache: "{{ 'yes' if rebuild_docker_image is defined and rebuild_docker_image|bool else 'no' }}"       # Setting this to 'yes' will cause a rebuild every time, forcing a new image to be built, even if no changes have been made to the Dockerfile.
@@ -159,12 +153,12 @@
 
     - name: jenkins Docker | Create and run the container without any config, then update the plugins, then run *with* the config
       block:
-        - name: jenkins_docker_conf
-          debug: msg={{jenkins_docker_conf}}
+        - name: _jenkins_docker_conf
+          debug: msg={{_jenkins_docker_conf}}
 
         - name: jenkins Docker | Create and run the initial Jenkins Docker container
           become: true
-          community.docker.docker_container: "{{jenkins_docker_conf}}"
+          community.docker.docker_container: "{{_jenkins_docker_conf}}"
           register: r__docker_container
 
         - name: jenkins Docker | Wait for Jenkins API to become available
@@ -208,13 +202,13 @@
 
         - name: jenkins Docker | Recreate and run the jenkins Docker container
           become: true
-          community.docker.docker_container: "{{ jenkins_docker_conf | combine(extra_jenkins_docker_conf) }}"
+          community.docker.docker_container: "{{ _jenkins_docker_conf | combine(extra_jenkins_docker_conf) }}"
           vars:
             extra_jenkins_docker_conf:
               env:
                 CASC_JENKINS_CONFIG: "{{ jenkins_controller.casc_file.remote | dirname }}"
               mounts:
-                - {"target": "{{jenkins_home_dir}}", "source": "jenkins_home", "type": "volume"}
+                - {"target": "{{jenkins_controller.jobs_dir}}", "source": "{{jenkins_controller.jobs_dir}}", "type": "bind"}
                 - {"target": "/var/run/docker.sock", "source": "/var/run/docker.sock", "type": "bind"}
                 - {"target": "{{jenkins_controller.casc_file.remote}}", "source": "{{jenkins_controller.casc_file.local}}", "type": "bind"}
 
@@ -226,7 +220,7 @@
           delay: 1
 
       vars:
-        jenkins_docker_conf:
+        _jenkins_docker_conf:
           cleanup: false
           detach: true
           name: "jenkins_controller"
@@ -250,7 +244,7 @@
   #          JENKINS_OPTS: "--httpsPort=8443" --httpsKeyStore=path/to/keystore --httpsKeyStorePassword=keystorePassword
             JENKINS_HOME: "{{jenkins_home_dir}}"
           mounts:
-            - {"target": "{{jenkins_home_dir}}", "source": "jenkins_home", "type": "volume"}
+            - {"target": "{{jenkins_controller.jobs_dir}}", "source": "{{jenkins_controller.jobs_dir}}", "type": "bind"}
             - {"target": "/var/run/docker.sock", "source": "/var/run/docker.sock", "type": "bind"}
 
 
