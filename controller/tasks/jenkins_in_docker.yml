@@ -57,9 +57,9 @@
       register: r__copy_jcasc
       vars:
         _base_casc_config: "{{jenkins_controller.casc_config}}"     # Note: We need to pre-template {{jenkins_controller.casc_config}} so that the vault credentials are templated-out correctly before filtering as json/yaml.
-        __num_executors_controller: "{{ (ansible_processor_vcpus * jenkins_controller.jcasc_numExecutorsMultiplier) | round(0,'ceil')|int }}"    # A rough calculator (good for ansible loads) == (Number of vCPUs) * scaling factor
+        __num_executors_controller: "{{ (ansible_facts['processor_vcpus'] * jenkins_controller.jcasc_numExecutorsMultiplier) | round(0,'ceil')|int }}"    # A rough calculator (good for ansible loads) == (Number of vCPUs) * scaling factor
         _casc_config_plus_numExecutors: "{{_base_casc_config | combine({'jenkins': {'numExecutors': __num_executors_controller }}, recursive=true)}}"
-        __location_url: "http://{%- if cluster_vars.dns_server is defined and cluster_vars.dns_server != '' -%} {{ansible_hostname | regex_replace('-(?!.*-).*')}}.{{cluster_vars.dns_user_domain | regex_replace('^(.*?)\\.?$','\\1')}} {%- else -%} {{ansible_default_ipv4.address}} {%- endif -%}"
+        __location_url: "http://{%- if cluster_vars.dns_server is truthy and cluster_vars.dns_nameserver_zone is truthy -%} {{ansible_facts['hostname'] | regex_replace('-(?!.*-).*') ~ ('.' ~ cluster_vars.dns_subdomain if cluster_vars.dns_subdomain else '') ~ '.' ~ cluster_vars.dns_nameserver_zone}} {%- else -%} {{ansible_facts['default_ipv4']['address']}} {%- endif -%}"
         _casc_config_plus_numExecutors_plus_resourceRoot_url: "{{_casc_config_plus_numExecutors | combine({'unclassified': {'location': {'url': __location_url}}}, recursive=true)}}"
 
     - name: jenkins Docker | augment the dockerfile
@@ -93,19 +93,7 @@
           # Options for jenkins-plugin-cli: https://github.com/jenkinsci/plugin-installation-manager-tool.
           RUN /bin/jenkins-plugin-cli --verbose --plugins {{ jenkins_controller.plugins | join(' ') }}
       vars:
-        host_docker_gid: "{{getent_group['docker'][1]}}"
-
-    - name: jenkins Docker | remove the validation of the SHA of the war file in the Dockerfile with the calculated SHA of the war file (because we're specifying the war file ourselves)
-      become: true
-      ansible.builtin.replace:
-        path: "{{ tmp_build_dir.path }}{{jenkins_controller.docker_image.repo_dockerfile_path}}"
-        regexp: '(^\s*)&&.*?sha256sum.*?(\s*\\)?$'
-        replace: '\g<1>&& /bin/true\g<2>'
-      register: r__lineinfile
-      failed_when: not r__lineinfile.changed
-
-    - name: jenkins Docker | debug r__lineinfile
-      debug: msg={{r__lineinfile}}
+        host_docker_gid: "{{ansible_facts.getent_group['docker'][1]}}"
 
     - name: jenkins Docker | Get the Jenkins release maven-metadata
       uri:
@@ -138,9 +126,9 @@
           args:
             uid: "{{ jenkins_uid }}"
             gid: "{{ jenkins_gid }}"
-            TARGETARCH: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else ansible_architecture }}"
+            TARGETARCH: "{{ 'amd64' if ansible_facts['architecture'] == 'x86_64' else 'arm64' if ansible_facts['architecture'] == 'aarch64' else ansible_facts['architecture'] }}"
             JENKINS_HOME: "{{jenkins_home_dir}}"
-            RELEASE_LINE: "{{ 'war-stable' if jenkins_controller.docker_image.war_version == 'latest-lts' else 'war' }}"
+            JENKINS_VERSION: "{{jenkins_war_version}}"
             WAR_URL: "https://repo.jenkins-ci.org/public/org/jenkins-ci/main/jenkins-war/{{ jenkins_war_version }}/jenkins-war-{{ jenkins_war_version }}.war"
           network: host
           pull: true

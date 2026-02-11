@@ -6,7 +6,7 @@
       apt:
         name: ['openjdk-17-jre-headless']
         update_cache: true
-      when: ansible_os_family == 'Debian'
+      when: ansible_facts['os_family'] == 'Debian'
       notify: restart agent service
 
     - name: "jenkins/agent | Create {{jenkins_agent.bindir}}"
@@ -53,7 +53,7 @@
             {
               "name": "{{ inventory_hostname }}",
               "nodeDescription": "",
-              "numExecutors": "{{ (ansible_processor_vcpus * jenkins_agent.numExecutorsMultiplier) | default(0) | round(0,'ceil')|int }}",
+              "numExecutors": "{{ (ansible_facts['processor_vcpus'] * jenkins_agent.numExecutorsMultiplier) | default(0) | round(0,'ceil')|int }}",
               "remoteFS": "{{jenkins_home_dir}}",
               "labelString": "agent",
               "launcher": {

@@ -30,13 +30,13 @@ jenkins_ui:
 
 jenkins_agent:
   bindir: "/opt/jenkins"
-  numExecutorsMultiplier: 1            # Cannot set to "{{ansible_processor_vcpus * 2}}" because ansible_processor_vcpus is a hostvar, only determined when being built.
+  numExecutorsMultiplier: 1            # Cannot set to "{{ansible_facts['processor_vcpus'] * 2}}" because ansible_facts['processor_vcpus'] is a hostvar, only determined when being built.
 
 jenkins_controller:
   docker_image:
     repo: "https://github.com/jenkinsci/docker.git"
     repo_version: "HEAD"                                            # Or a git hash, e.g. "6902b0181c87114e33f7d3fa2afeade8c3bc4aa3"
-    repo_dockerfile_path: "/debian/trixie/hotspot/Dockerfile"       # From: https://github.com/jenkinsci/docker.git
+    repo_dockerfile_path: "/debian/Dockerfile"                      # From: https://github.com/jenkinsci/docker.git
     war_version: "latest-lts"                                       # One of: 'latest-lts', 'latest', or a legitimate version string (from https://repo.jenkins-ci.org/releases/org/jenkins-ci/main/jenkins-war/maven-metadata.xml)
     plugin_cli_version: "latest"                                    # One of: 'latest', or 'tags/<tag>' (e.g. 'tags/2.9.3')
   jobs_dir: "{{jenkins_home_dir}}/jobs"
@@ -59,7 +59,7 @@ jenkins_controller:
     - "simple-theme-plugin:latest"
     - "uno-choice:latest"
     - "workflow-aggregator:latest"
-  jcasc_numExecutorsMultiplier: 0.5     # Cannot set jenkins_controller.casc_config.jenkins.jcasc_numExecutorsMultiplier = "{{ansible_processor_vcpus * 3}}" because ansible_processor_vcpus is a hostvar, only determined when being built.
+  jcasc_numExecutorsMultiplier: 0.5     # Cannot set jenkins_controller.casc_config.jenkins.jcasc_numExecutorsMultiplier = "{{ansible_facts['processor_vcpus'] * 3}}" because ansible_facts['processor_vcpus'] is a hostvar, only determined when being built.
   casc_file:
     local: "/home/{{jenkins_username}}/jenkins_casc.yml"
     remote: "{{jenkins_home_dir}}/casc_configs/jenkins.yml"

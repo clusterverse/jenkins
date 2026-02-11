@@ -7,5 +7,6 @@ roles:
 
 
 collections:
-  - name: git@github.com:clusterverse/clusterverse.git
-    version: master
+  - name: clusterverse.clusterverse
+    version: ">=4.0.3,<5.0.0"
+    source: https://galaxy.ansible.com

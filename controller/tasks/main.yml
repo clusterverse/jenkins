@@ -9,12 +9,12 @@
       become: true
       shell: "{{ item }}"
       loop:
-        - "iptables -t nat -A PREROUTING -p tcp -m tcp -i {{ ansible_default_ipv4.interface }} --dport 80 -j REDIRECT --to-ports 8080"    # Redirect traffic inbound on default ipv4 interface (e.g. eth0)
+        - "iptables -t nat -A PREROUTING -p tcp -m tcp -i {{ ansible_facts['default_ipv4']['interface'] }} --dport 80 -j REDIRECT --to-ports 8080"    # Redirect traffic inbound on default ipv4 interface (e.g. eth0)
         - "iptables -t nat -I OUTPUT -p tcp -o lo --dport 80 -j REDIRECT --to-ports 8080"                                                 # Redirect traffic outbound on loopback interface (PREROUTING not valid on loopback), for console api access
-        - "iptables -t nat -A PREROUTING -p tcp -m tcp -i {{ ansible_default_ipv4.interface }} --dport 443 -j REDIRECT --to-ports 8443"
+        - "iptables -t nat -A PREROUTING -p tcp -m tcp -i {{ ansible_facts['default_ipv4']['interface'] }} --dport 443 -j REDIRECT --to-ports 8443"
         - "iptables -t nat -I OUTPUT -p tcp -o lo --dport 443 -j REDIRECT --to-ports 8443"
         - "mkdir -p /etc/iptables && iptables-save > /etc/iptables/rules.v4 && ip6tables-save > /etc/iptables/rules.v6"
-      when: ansible_os_family == 'Debian'
+      when: ansible_facts['os_family'] == 'Debian'
 
     - name: jenkins | permanently forward ports 80->8080 and 443->8443 (firewall-cmd - RedHat/ CentOS)
       become: true
@@ -22,7 +22,7 @@
       loop:
         - "firewall-cmd --zone=external --permanent --add-forward-port=port=80:proto=tcp:toaddr=127.0.0.1:toport=8080"
         - "firewall-cmd --zone=external --permanent --add-forward-port=port=443:proto=tcp:toaddr=127.0.0.1:toport=8443"
-      when: ansible_os_family == 'RedHat'
+      when: ansible_facts['os_family'] == 'RedHat'
   when: "host_docker.network.container.mode == 'host' or (port_forward is defined and port_forward|bool)"
 
 - name: jenkins | install Jenkins in Docker
