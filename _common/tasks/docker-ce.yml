@@ -63,3 +63,18 @@
         update_cache: true
         name: docker-ce
         state: present
+
+    - name: jenkins/docker-ce | Change the root directory of the containerd daemon to the mounted volume
+      become: true
+      lineinfile:
+        path: /etc/containerd/config.toml
+        regexp: '^#?root = .*'
+        line: 'root = "{{host_docker.data_root_dir}}/containerd"'
+      register: r__lineinfile__containerd_config_toml
+
+    - name: jenkins/docker-ce | Restart containerd if config changed
+      become: true
+      systemd:
+        name: containerd
+        state: restarted
+      when: r__lineinfile__containerd_config_toml.changed
