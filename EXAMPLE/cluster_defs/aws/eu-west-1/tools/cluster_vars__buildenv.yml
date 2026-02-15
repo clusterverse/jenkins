@@ -24,7 +24,7 @@ cluster_vars:
       controller:
         auto_volumes:
           - { device_name: "/dev/sda1", mountpoint: "/", fstype: "ext4", volume_type: "gp3", volume_size: 16, encrypted: true, delete_on_termination: true }
-          - { device_name: "/dev/sdf", mountpoint: "{{jenkins_controller.jobs_dir}}", fstype: "ext4", volume_type: "gp3", volume_size: 4, encrypted: true, delete_on_termination: true }
+          - { device_name: "/dev/sdf", mountpoint: "{{jenkins_controller.jobs_dir}}", fstype: "ext4", volume_type: "gp3", volume_size: 12, encrypted: true, delete_on_termination: true }
         flavor: t4g.small
         version: "{{jenkins_controller.docker_image.war_version | regex_replace('[\\.-]', '_') | default('')}}"
         vms_by_az: { a: 1, b: 0, c: 0 }

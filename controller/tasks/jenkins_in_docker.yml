@@ -59,7 +59,7 @@
         _base_casc_config: "{{jenkins_controller.casc_config}}"     # Note: We need to pre-template {{jenkins_controller.casc_config}} so that the vault credentials are templated-out correctly before filtering as json/yaml.
         __num_executors_controller: "{{ (ansible_facts['processor_vcpus'] * jenkins_controller.jcasc_numExecutorsMultiplier) | round(0,'ceil')|int }}"    # A rough calculator (good for ansible loads) == (Number of vCPUs) * scaling factor
         _casc_config_plus_numExecutors: "{{_base_casc_config | combine({'jenkins': {'numExecutors': __num_executors_controller }}, recursive=true)}}"
-        __location_url: "http://{%- if cluster_vars.dns_server is truthy and cluster_vars.dns_nameserver_zone is truthy -%} {{ansible_facts['hostname'] | regex_replace('-(?!.*-).*') ~ ('.' ~ cluster_vars.dns_subdomain if cluster_vars.dns_subdomain else '') ~ '.' ~ cluster_vars.dns_nameserver_zone}} {%- else -%} {{ansible_facts['default_ipv4']['address']}} {%- endif -%}"
+        __location_url: "http://{%- if cluster_vars.dns_server is truthy and cluster_vars.dns_nameserver_zone is truthy -%} {{ansible_facts['hostname'] | regex_replace('-(?!.*-).*') ~ '.' ~ cluster_vars.dns_domain }} {%- else -%} {{ansible_facts['default_ipv4']['address']}} {%- endif -%}"
         _casc_config_plus_numExecutors_plus_resourceRoot_url: "{{_casc_config_plus_numExecutors | combine({'unclassified': {'location': {'url': __location_url}}}, recursive=true)}}"
 
     - name: jenkins Docker | augment the dockerfile
