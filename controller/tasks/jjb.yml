@@ -63,7 +63,12 @@
 
     - name: JJB | Reload jenkins-jobs (create folders first)
       become: true
-      shell: "jenkins-jobs --conf {{ tmp_build_dir.path }}/jenkins_jobs.ini update {{ tmp_build_dir.path }}"
+      command: "/usr/local/bin/jenkins-jobs --conf {{ tmp_build_dir.path }}/jenkins_jobs.ini update {{ tmp_build_dir.path }}"
+      register: r__cmd__jjb_reload_folders
+      retries: 10
+      delay: 2
+      until: r__cmd__jjb_reload_folders is success
+
 
     - name: JJB | Copy jobs to the JJB directory
       become: true
@@ -80,7 +85,12 @@
 
     - name: JJB | Reload jenkins-jobs (add jobs)
       become: true
-      shell: "jenkins-jobs --conf {{ tmp_build_dir.path }}/jenkins_jobs.ini update {{ tmp_build_dir.path }}"
+      command: "/usr/local/bin/jenkins-jobs --conf {{ tmp_build_dir.path }}/jenkins_jobs.ini update {{ tmp_build_dir.path }}"
+      register: r__cmd__jjb_reload_jobs
+      retries: 10
+      delay: 2
+      until: r__cmd__jjb_reload_jobs is success
+
 
     - name: JJB | Remove temporary build directory
       become: true

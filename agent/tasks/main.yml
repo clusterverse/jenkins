@@ -4,7 +4,7 @@
     - name: jenkins/agent | Install required packages
       become: true
       apt:
-        name: ['openjdk-17-jre-headless']
+        name: ['openjdk-25-jre-headless']
         update_cache: true
       when: ansible_facts['os_family'] == 'Debian'
       notify: restart agent service
@@ -25,7 +25,7 @@
         group: "{{jenkins_username}}"
         state: directory
 
-    - name: jenkins/agent | Get Jenkins CSRF crumb
+    - name: jenkins/agent | Get Jenkins CSRF crumb (ignore if 404 - CSRF not enabled)
       ansible.builtin.uri:
         url: "{{ jenkins_controller_url }}/crumbIssuer/api/json"
         user: "{{ jenkins_admin_username }}"
@@ -33,19 +33,19 @@
         method: GET
         force_basic_auth: true
         return_content: yes
-        status_code: 200
+        status_code: [ 200, 404 ]
       register: r__uri__crumb_response
 
-    - name: jenkins/agent | Add Jenkins agent via REST API
+    - name: jenkins/agent | Add Jenkins agent via REST API (add crumb if present)
       ansible.builtin.uri:
-        url: "{{ jenkins_controller_url }}/computer/doCreateItem?name={{ inventory_hostname }}&Jenkins-Crumb={{ r__uri__crumb_response.json.crumb }}"
+        url: "{{ jenkins_controller_url }}/computer/doCreateItem?name={{ inventory_hostname }}{{'&Jenkins-Crumb='~ r__uri__crumb_response.json.crumb if r__uri__crumb_response.status == 200 else ''}}"
         user: "{{ jenkins_admin_username }}"
         password: "{{ jenkins_admin_password }}"
         method: POST
         force_basic_auth: true
         headers:
           Content-Type: "application/x-www-form-urlencoded"
-          Cookie: "{{ r__uri__crumb_response.cookies_string }}"
+          Cookie: "{{ r__uri__crumb_response.cookies_string if r__uri__crumb_response.status == 200 else '' }}"
         body_format: form-urlencoded
         body:
           type: "hudson.slaves.DumbSlave"
@@ -106,8 +106,8 @@
           After=network.target
     
           [Service]
-          WorkingDirectory=/home/jenkins
-          ExecStart=java -jar {{jenkins_agent.bindir}}/agent.jar -jnlpUrl {{ jenkins_controller_url }}/computer/{{ inventory_hostname }}/jenkins-agent.jnlp -secret {{secret}} -workDir "/home/jenkins" -failIfWorkDirIsMissing
+          WorkingDirectory={{jenkins_home_dir}}
+          ExecStart=java -jar {{jenkins_agent.bindir}}/agent.jar -url {{ jenkins_controller_url }} -name {{ inventory_hostname }} -secret {{secret}} -workDir "{{jenkins_home_dir}}" -failIfWorkDirIsMissing
           Restart=always
           User={{jenkins_username}}
     
