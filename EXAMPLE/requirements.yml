@@ -8,7 +8,7 @@ roles:
 
 collections:
   - name: clusterverse.clusterverse
-    version: ">=5.0.0,<5.1.0"
+    version: ">=5.0.4,<5.1.0"
     source: https://galaxy.ansible.com
 
   # Optional, if using libvirt
