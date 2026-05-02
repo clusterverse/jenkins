@@ -3,7 +3,7 @@
 - name: jenkins/common | Install required packages (gnupg2 for docker GPG key)
   become: true
   apt:
-    name: ['git', 'gnupg2', 'python3-pip', 'python3-docker', 'iptables-persistent']
+    name: ['git', 'gnupg2', 'python3-pip', 'python3-docker', 'python3-debian', 'iptables-persistent']
     update_cache: true
   when: ansible_facts['os_family'] == 'Debian'
 

@@ -81,3 +81,9 @@
         name: containerd
         state: restarted
       when: r__lineinfile__containerd_config_toml.changed
+
+    - name: jenkins/docker-ce | Restart docker
+      become: true
+      systemd:
+        name: docker
+        state: restarted
