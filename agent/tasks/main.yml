@@ -36,6 +36,22 @@
         status_code: [ 200, 404 ]
       register: r__uri__crumb_response
 
+    - name: jenkins/agent | Delete Jenkins agent if it already exists
+      ansible.builtin.uri:
+        url: "{{ jenkins_controller_url }}/computer/{{ inventory_hostname }}/doDelete{{'&Jenkins-Crumb='~ r__uri__crumb_response.json.crumb if r__uri__crumb_response.status == 200 else ''}}"
+        user: "{{ jenkins_admin_username }}"
+        password: "{{ jenkins_admin_password }}"
+        method: POST
+        force_basic_auth: true
+        headers:
+          Content-Type: "application/x-www-form-urlencoded"
+          Cookie: "{{ r__uri__crumb_response.cookies_string if r__uri__crumb_response.status == 200 else '' }}"
+        status_code: [200, 302, 404]
+      register: r__uri__delete_agent
+
+    - name: jenkins/agent | debug r__uri__delete_agent
+      debug: var=r__uri__delete_agent
+
     - name: jenkins/agent | Add Jenkins agent via REST API (add crumb if present)
       ansible.builtin.uri:
         url: "{{ jenkins_controller_url }}/computer/doCreateItem?name={{ inventory_hostname }}{{'&Jenkins-Crumb='~ r__uri__crumb_response.json.crumb if r__uri__crumb_response.status == 200 else ''}}"
@@ -82,9 +98,9 @@
         url_password: "{{jenkins_admin_password}}"
       register: r__uri__agent_jnlp
 
-    - name: jenkins/agent | secret str
-      debug:
-        msg: "{{r__uri__agent_jnlp.content | regex_replace('.*<jnlp><application-desc><argument>([a-z0-9]*).*', '\\1') }}"
+#    - name: jenkins/agent | secret str
+#      debug:
+#        msg: "{{r__uri__agent_jnlp.content | regex_replace('.*<jnlp><application-desc><argument>([a-z0-9]*).*', '\\1') }}"
 
     - name: jenkins/agent | Get agent.jar
       become: true
