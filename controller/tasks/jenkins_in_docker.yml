@@ -37,7 +37,7 @@
 
     - name: jenkins Docker | Get agent facts to get memory CPU for executors calculation
       ansible.builtin.setup:
-      delegate_to: "{{ groups['agent'][0] }}"
+      delegate_to: "{{ groups['agent'][0] if 'agent' in groups else omit }}"
       delegate_facts: true
       run_once: true
       when: "'agent' in groups"

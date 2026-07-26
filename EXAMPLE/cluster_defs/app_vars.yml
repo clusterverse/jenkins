@@ -25,8 +25,8 @@ jenkins_gid: "{{jenkins_uid}}"
 
 jenkins_ui:
   email: "example@example.com"
-  skin_color: "linear-gradient(110deg, grey 40%, #000 40%)"
-  content: "{{clusterid | default('jenkins')}} | {{cloud_type | default()}} | {{region | default()}} | {{buildenv | default()}}"
+  skin_color: "linear-gradient(110deg, transparent 40%, #888 40%), linear-gradient(90deg, #0085ff 0%, #044689 40%)"
+  content: "{{clusterid | default('jenkins')}} | {{cloud_type | default()}} | {{ihv_region | default()}} | {{buildenv | default()}}"
 
 jenkins_agent:
   bindir: "/opt/jenkins"

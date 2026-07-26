@@ -5,7 +5,7 @@ redeploy_schemes_supported: ['_scheme_addallnew_rmdisk_rollback', '_scheme_addne
 update_os: true                                         # A variable passed to the cloud-init user-data script (or the startup-script for GCP), to indicate that it can run any user-defined run_cmd (apt-get -y dist-upgrade).
 omit_singleton_hosttype_from_hostname: true             # Don't need the hosttype in the hostname (e.g. 'mongo-dev-mongod-a0' vs 'mongo-dev-a0')
 
-app_name: "jenkins-{{lookup('pipe', 'whoami') | lower}}"     # The name of the application cluster (e.g. 'couchbase', 'nginx'); becomes part of cluster_name.  Provided is a default to ensure no accidental overwriting.
+app_name: "jenkins"                                     # The name of the application cluster; becomes part of cluster_name.
 
 cluster_name: "{{app_name}}-{{buildenv}}"               # Identifies the cluster within the cloud environment; becomes part of the hostname
 

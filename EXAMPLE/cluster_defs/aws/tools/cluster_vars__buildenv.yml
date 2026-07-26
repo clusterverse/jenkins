@@ -15,9 +15,6 @@ cluster_vars:
 #        ssh_args (proxy_only): "{{ ((' -o ProxyCommand=\"nc -X connect -x ' ~ (lookup('env', 'HTTP_PROXY') | regex_replace('^https?://', '')) ~ ' %h %p\"') if lookup('env', 'HTTP_PROXY') != '' else '') }}"
 #        ssh_args (bastion_and_proxy): "{{ '-o ProxyCommand=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ./id_rsa__cv_bastion__' ~ cluster_name ~ ((' -o ProxyCommand=\\\"nc -X connect -x ' ~ (lookup('env', 'HTTP_PROXY') | regex_replace('^https?://', '')) ~ ' bastion.example.com 22\\\"') if lookup('env', 'HTTP_PROXY') != '' else '') ~ ' user@bastion.example.com -W %h:%p\"' }}"
 #        ssh_priv_key: "{{ lookup('env', 'BASTION_SSH_PRIVATE_KEY_CONTENTS') | default ('') }}"       # NOTE: This can either be sourced from environment (BASTION_SSH_PRIVATE_KEY_CONTENTS), or defined inline here (perhaps vaulted).
-    vpc_name: "test{{buildenv}}"
-    vpc_subnet_name_prefix: "{{buildenv}}-test-{{region}}"
-    key_name: "test__id_rsa"
     termination_protection: "no"
 
     hosttype_vars:
@@ -27,13 +24,27 @@ cluster_vars:
           - { device_name: "/dev/sdf", mountpoint: "{{jenkins_controller.jobs_dir}}", fstype: "ext4", volume_type: "gp3", volume_size: 12, encrypted: true, delete_on_termination: true }
         flavor: t4g.small
         version: "{{jenkins_controller.docker_image.war_version | regex_replace('[\\.-]', '_') | default('')}}"
-        vms_by_az: { a: 1, b: 0, c: 0 }
+        region_vars:
+          eu-west-1:
+            vpc_name: "{{buildenv}}"
+            vpc_subnet_name_prefix: "{{buildenv}}-public-"
+            vms_by_zone: { a: 1, b: 0, c: 0 }
+##            base_image: "ami-0ca305251a019b06b"   # eu-west-1 26.04 amd64 hvm-ssd 20260503.
+##            key_name: "pre-stored-keypair-name"
 
       agent:
         auto_volumes:
           - { device_name: "/dev/sdf", mountpoint: "{{host_docker.data_root_dir}}", fstype: "ext4", volume_type: "gp3", volume_size: 32, encrypted: true, delete_on_termination: true }
         flavor: t4g.medium
         version: "{{jenkins_controller.docker_image.war_version | regex_replace('[\\.-]', '_') | default('')}}"
-        vms_by_az: { a: 1, b: 1, c: 0 }
+        region_vars:
+          eu-west-1:
+            vpc_name: "{{buildenv}}"
+            vpc_subnet_name_prefix: "{{buildenv}}-public-"
+            vms_by_zone: { a: 1, b: 0, c: 0 }
+          eu-west-2:
+            vpc_name: "{{buildenv}}"
+            vpc_subnet_name_prefix: "{{buildenv}}-public-"
+            vms_by_zone: { a: 1, b: 0, c: 0 }
 
 _host_ssh_connection_cfg: { <<: *host_ssh_connection_cfg }
