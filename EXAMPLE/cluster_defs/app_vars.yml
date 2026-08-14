@@ -42,10 +42,11 @@ jenkins_controller:
   jobs_dir: "{{jenkins_home_dir}}/jobs"
   plugins:
     - "basic-branch-build-strategies:latest"
-    - "blueocean:latest"
+    - "pipeline-graph-view:latest"
     - "configuration-as-code:latest"
     - "docker-workflow:latest"
     - "git-parameter:latest"
+    - "github-branch-source:latest"
     - "inline-pipeline:latest"
     - "lockable-resources:latest"
     - "login-theme:latest"
